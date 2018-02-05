@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import glob
 import sys
+import math
 
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -42,7 +43,8 @@ for i in range(1,11):
         cv2.imshow('left img',img_left)
         cv2.imshow('right img',img_right)
         cv2.waitKey(500)
-        
+
+#calibrate the cameras separately to get the camera matrices and distortion coefficients        
 ret, mtx_left, dist_left, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints_left, gray_left.shape[::-1],None,None)
 ret, mtx_right, dist_right, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints_right, gray_right.shape[::-1],None,None)
 
@@ -55,78 +57,63 @@ termination_criteria_extrinsics = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX
 
 print()
 print("START - extrinsic calibration ...")
+
+#calibrate both the cameras
 (rms_stereo, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, R, T, E, F) = \
-cv2.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx_left, dist_left, mtx_right, dist_right,  gray_left.shape[::-1], criteria=termination_criteria_extrinsics, flags=0);
+cv2.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx_left, dist_left, mtx_right, dist_right,  gray_left.shape[::-1], None, None, cv2.CALIB_FIX_INTRINSIC, criteria=termination_criteria_extrinsics, flags=0);
 print("camera matrix 1:",cameraMatrix1)
 print("CM2:",cameraMatrix2)
 print("Rotation Matrix:",R)
-print("Transltion:",T)
+print("Translation:",T)
 print("Essential Matrix:",E)
 print("Fundamental Matrix:",F)
 print("Distortion Coefficients:",distCoeffs1,distCoeffs2)
+Tarray= np.ravel(T.sum(axis=0))
+print("TArray",Tarray)
+Baseline=math.sqrt(Tarray**2)*2.4
+print("baseline in cm",Baseline)
+rectify_scale = 0 # 0=full crop, 1=no crop, -1=default without scaling
 
-rectify_scale = 0 # 0=full crop, 1=no crop
-R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T, alpha = -1)
+#Rectify to get the distortion coefficients and the Q matrix needed for reprojection
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T,flags=0, alpha = -1)
+
+print('R1:',R1)
+print('R2:',R2)
+print('P1:',P1)
+print('P2',P2)
+print('Q matrix:',Q)
+
 mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (640, 720), cv2.CV_32FC1)
 mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (640, 720), cv2.CV_32FC1)
 
 lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
 rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
  
-left_img_remap = cv2.remap(lFrame, mapL1, mapL2, cv2.INTER_LINEAR)
-right_img_remap = cv2.remap(rFrame, mapR1, mapR2, cv2.INTER_LINEAR)
+grayL = cv2.cvtColor(lFrame,cv2.COLOR_BGR2GRAY);
+grayR = cv2.cvtColor(rFrame,cv2.COLOR_BGR2GRAY);
+
+#undistort the image and remap
+undistorted_rectifiedL = cv2.remap(grayL, mapL1, mapL2, cv2.INTER_LINEAR);
+undistorted_rectifiedR = cv2.remap(grayR, mapR1, mapR2, cv2.INTER_LINEAR);
+
+# display image
+cv2.imshow('windowNameL',undistorted_rectifiedL);
+cv2.imshow('windowNameR',undistorted_rectifiedR);
 
 
-for line in range(0, int(right_img_remap.shape[0] / 20)):
-    left_img_remap[line * 20, :] = (0, 0, 255)
-    right_img_remap[line * 20, :] = (0, 0, 255)
+#Find the correspondent points and the depth map
+computeDepthMap=cv2.StereoBM_create(numDisparities=32, blockSize=25)
+disparity=computeDepthMap.compute(undistorted_rectifiedL,undistorted_rectifiedR)
 
-cv2.imshow('rectified left',left_img_remap)
-cv2.imshow('rectified right',right_img_remap)
-#cv2.imshow('winname', np.hstack([left_img_remap, right_img_remap]))
+# scale the disparity to 8-bit for viewing
 
+depthmap = (disparity / 16.).astype(np.uint8) + abs(disparity.min())
 
+cv2.imshow('depthmap',depthmap)
 
+sys.stdout=open('point cloud.txt','w')
+ddepth=cv2.reprojectImageTo3D(depthmap,Q,_3dImage,handleMissingValues=0)
+sys.stdout.close()
 
-# Assuming you have left01.jpg and right01.jpg that you want to rectify
-lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
-rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
-w, h = lFrame.shape[:2] # both frames should be of same shape
-frames = [lFrame, rFrame]
-
-# Params from camera calibration
-camMats = [cameraMatrix1, cameraMatrix2]
-distCoeffs = [distCoeffs1, distCoeffs2]
-
-camSources = [0,1]
-for src in camSources:
-    distCoeffs[src][0][4] = 0.0 # use only the first 2 values in distCoeffs
-
-# The rectification process
-newCams = [0,0]
-roi = [0,0]
-for src in camSources:
-    newCams[src], roi[src] = cv2.getOptimalNewCameraMatrix(cameraMatrix = camMats[src], 
-                                                           distCoeffs = distCoeffs[src], 
-                                                           imageSize = (w,h), 
-                                                           alpha = 0)
-
-
-
-rectFrames = [0,0]
-for src in camSources:
-        rectFrames[src] = cv2.undistort(frames[src], 
-                                        camMats[src], 
-                                        distCoeffs[src])
-
-# See the results
-view = np.hstack([frames[0], frames[1]])    
-rectView = np.hstack([rectFrames[0], rectFrames[1]])
-
-cv2.imshow('view', view)
-cv2.imshow('rectView', rectView)
-
-# Wait indefinitely for any keypress
 cv2.waitKey(0)
-
 cv2.destroyAllWindows()
