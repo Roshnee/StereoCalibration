@@ -56,7 +56,7 @@ termination_criteria_extrinsics = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX
 print()
 print("START - extrinsic calibration ...")
 (rms_stereo, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, R, T, E, F) = \
-cv2.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx_left, dist_left, mtx_right, dist_right,  gray_left.shape[::-1], criteria=termination_criteria_extrinsics, flags=0);
+cv2.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx_left, dist_left, mtx_right, dist_right,  gray_left.shape[::-1], flags=cv2.CALIB_FIX_INTRINSIC, criteria=termination_criteria_extrinsics);
 print("camera matrix 1:",cameraMatrix1)
 print("CM2:",cameraMatrix2)
 print("Rotation Matrix:",R)
@@ -83,9 +83,6 @@ for line in range(0, int(right_img_remap.shape[0] / 20)):
 
 cv2.imshow('rectified left',left_img_remap)
 cv2.imshow('rectified right',right_img_remap)
-#cv2.imshow('winname', np.hstack([left_img_remap, right_img_remap]))
-
-
 
 
 # Assuming you have left01.jpg and right01.jpg that you want to rectify
@@ -93,6 +90,7 @@ lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
 rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
 w, h = lFrame.shape[:2] # both frames should be of same shape
 frames = [lFrame, rFrame]
+
 
 # Params from camera calibration
 camMats = [cameraMatrix1, cameraMatrix2]
@@ -123,8 +121,8 @@ for src in camSources:
 view = np.hstack([frames[0], frames[1]])    
 rectView = np.hstack([rectFrames[0], rectFrames[1]])
 
-cv2.imshow('view', view)
-cv2.imshow('rectView', rectView)
+#cv2.imshow('view', view)
+#cv2.imshow('rectView', rectView)
 
 # Wait indefinitely for any keypress
 cv2.waitKey(0)
