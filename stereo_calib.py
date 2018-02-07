@@ -90,9 +90,24 @@ while(cap.isOpened()):
        right_img_remap = cv2.remap(right, mapR1, mapR2, cv2.INTER_LINEAR)
        cv2.imshow('rectified left',left_img_remap)
        cv2.imshow('rectified right',right_img_remap)
+       
+       #Convert to grayscale
+       grayL=cv2.cvtColor(left_img_remap,cv2.COLOR_BGR2GRAY)
+       grayR=cv2.cvtColor(right_img_remap,cv2.COLOR_BGR2GRAY)
+
+       #find the depth map
+       computeDepthMap=cv2.StereoBM_create(numDisparities=128, blockSize=21)
+       disparity=computeDepthMap.compute(grayL,grayR)
+
+       # scale the disparity to 8-bit for viewing
+
+       depthmap = (disparity / 16.).astype(np.uint8) + abs(disparity.min())
+       cv2.imshow('depthmap',depthmap)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
+
 
 cap.release()
 cv2.waitKey(0)
