@@ -73,14 +73,20 @@ print("Translation:",T)
 print("Essential Matrix:",E)
 print("Fundamental Matrix:",F)
 print("Distortion Coefficients:",distCoeffs1,distCoeffs2)
-Tarray= np.ravel(T.sum(axis=0))
-print("TArray",Tarray)
-Baseline=math.sqrt(Tarray**2)*2.4
+#x=np.matrix(T)
+#y=x.tolist()
+#z=np.array(y)
+#y=z.flatten()
+#print("Translation array:",y)
+Baseline=2.4*np.linalg.norm(T)
+#Tarray= np.ravel(T.sum(axis=0))
+#print("TArray",Tarray)
+#Baseline=math.sqrt(Tarray**2)*2.4
 print("baseline in cm",Baseline)
 rectify_scale = 0 # 0=full crop, 1=no crop, -1=default without scaling
 
 #Rectify to get the distortion coefficients and the Q matrix needed for reprojection
-R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T,
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 640), R, T,
                                   flags=cv2.CALIB_ZERO_DISPARITY, alpha = 0)
 
 print('R1:',R1)
@@ -89,7 +95,7 @@ print('P1:',P1)
 print('P2',P2)
 print('Q matrix:',Q)
 
-mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (640, 640), cv2.CV_32FC1)
+mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (6400, 640), cv2.CV_32FC1)
 mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (640, 640), cv2.CV_32FC1)
 
 lFrame = cv2.imread('/home/roshnee/myrepo/StereoCalibration/left/left01.jpg')
@@ -103,9 +109,9 @@ undistorted_rectifiedL = cv2.remap(grayL, mapL1, mapL2, cv2.INTER_LANCZOS4);
 undistorted_rectifiedR = cv2.remap(grayR, mapR1, mapR2, cv2.INTER_LANCZOS4);
 
 
-#for line in range(0, int(undistorted_rectifiedR.shape[0] / 20)):
-#    undistorted_rectifiedL[line * 20, :] = (0, 0, 255)
-#    undistorted_rectifiedR[line * 20, :] = (0, 0, 255)
+for line in range(0, 32):
+    undistorted_rectifiedL[line * 20, :] = (0, 0, 255)
+    undistorted_rectifiedR[line * 20, :] = (0, 0, 255)
 
 cv2.imshow('rectified left',undistorted_rectifiedL)
 cv2.imshow('rectified right',undistorted_rectifiedR)
