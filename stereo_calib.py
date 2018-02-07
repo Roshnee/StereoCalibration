@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import glob
 import sys
+import time
 
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -66,65 +67,78 @@ print("Fundamental Matrix:",F)
 print("Distortion Coefficients:",distCoeffs1,distCoeffs2)
 
 rectify_scale = 0 # 0=full crop, 1=no crop
-R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T, alpha = -1)
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T, alpha = 0)
 mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (640, 720), cv2.CV_32FC1)
 mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (640, 720), cv2.CV_32FC1)
 
-lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
-rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
- 
-left_img_remap = cv2.remap(lFrame, mapL1, mapL2, cv2.INTER_LINEAR)
-right_img_remap = cv2.remap(rFrame, mapR1, mapR2, cv2.INTER_LINEAR)
+#lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
+#rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
+
+#Input from the video stream
+time.sleep(2)
+cap = cv2.VideoCapture('http://pi:raspberrypi@192.168.0.100:9090/stream/video.mjpeg')
+
+print("Cap is opened")
+while(cap.isOpened()):
+
+    ret,frame=cap.read()
+    if ret==True:
+       cv2.imshow('video stream',frame)
+       right=frame[0:640,0:640]
+       left=frame[0:640,640:1280]
+       left_img_remap = cv2.remap(left, mapL1, mapL2, cv2.INTER_LINEAR)
+       right_img_remap = cv2.remap(right, mapR1, mapR2, cv2.INTER_LINEAR)
+       cv2.imshow('rectified left',left_img_remap)
+       cv2.imshow('rectified right',right_img_remap)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
 
-for line in range(0, int(right_img_remap.shape[0] / 20)):
-    left_img_remap[line * 20, :] = (0, 0, 255)
-    right_img_remap[line * 20, :] = (0, 0, 255)
-
-cv2.imshow('rectified left',left_img_remap)
-cv2.imshow('rectified right',right_img_remap)
 
 
+
+
+#for line in range(0, int(right_img_remap.shape[0] / 20)):
+#    left_img_remap[line * 20, :] = (0, 0, 255)
+#    right_img_remap[line * 20, :] = (0, 0, 255)
+#cv2.imshow('rectified left',left_img_remap)
+#cv2.imshow('rectified right',right_img_remap)
+#cv2.imshow('winname', np.hstack([left_img_remap, right_img_remap]))
 # Assuming you have left01.jpg and right01.jpg that you want to rectify
-lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
-rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
-w, h = lFrame.shape[:2] # both frames should be of same shape
-frames = [lFrame, rFrame]
-
-
+#lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
+#rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
+#w, h = lFrame.shape[:2] # both frames should be of same shape
+#frames = [lFrame, rFrame]
 # Params from camera calibration
-camMats = [cameraMatrix1, cameraMatrix2]
-distCoeffs = [distCoeffs1, distCoeffs2]
-
-camSources = [0,1]
-for src in camSources:
-    distCoeffs[src][0][4] = 0.0 # use only the first 2 values in distCoeffs
-
+#camMats = [cameraMatrix1, cameraMatrix2]
+#distCoeffs = [distCoeffs1, distCoeffs2]
+#camSources = [0,1]
+#for src in camSources:
+#    distCoeffs[src][0][4] = 0.0 # use only the first 2 values in distCoeffs
 # The rectification process
-newCams = [0,0]
-roi = [0,0]
-for src in camSources:
-    newCams[src], roi[src] = cv2.getOptimalNewCameraMatrix(cameraMatrix = camMats[src], 
-                                                           distCoeffs = distCoeffs[src], 
-                                                           imageSize = (w,h), 
-                                                           alpha = 0)
-
-
-
-rectFrames = [0,0]
-for src in camSources:
-        rectFrames[src] = cv2.undistort(frames[src], 
-                                        camMats[src], 
-                                        distCoeffs[src])
-
+#newCams = [0,0]
+#roi = [0,0]
+#for src in camSources:
+#    newCams[src], roi[src] = cv2.getOptimalNewCameraMatrix(cameraMatrix = camMats[src], 
+#                                                           distCoeffs = distCoeffs[src], 
+#                                                           imageSize = (w,h), 
+#                                                           alpha = 0)
+#rectFrames = [0,0]
+#for src in camSources:
+#        rectFrames[src] = cv2.undistort(frames[src], 
+#                                        camMats[src], 
+#                                        distCoeffs[src])
 # See the results
-view = np.hstack([frames[0], frames[1]])    
-rectView = np.hstack([rectFrames[0], rectFrames[1]])
+#view = np.hstack([frames[0], frames[1]])    
+#rectView = np.hstack([rectFrames[0], rectFrames[1]])
 
 #cv2.imshow('view', view)
 #cv2.imshow('rectView', rectView)
 
 # Wait indefinitely for any keypress
-cv2.waitKey(0)
 
-cv2.destroyAllWindows()

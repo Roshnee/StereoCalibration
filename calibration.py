@@ -81,7 +81,7 @@ rectify_scale = 0 # 0=full crop, 1=no crop, -1=default without scaling
 
 #Rectify to get the distortion coefficients and the Q matrix needed for reprojection
 R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T,
-                                  flags=cv2.CALIB_ZERO_DISPARITY, alpha = -1)
+                                  flags=cv2.CALIB_ZERO_DISPARITY, alpha = 0)
 
 print('R1:',R1)
 print('R2:',R2)
@@ -99,8 +99,8 @@ grayL = cv2.cvtColor(lFrame,cv2.COLOR_BGR2GRAY);
 grayR = cv2.cvtColor(rFrame,cv2.COLOR_BGR2GRAY);
 
 #undistort the image and remap
-undistorted_rectifiedL = cv2.remap(grayL, mapL1, mapL2, cv2.INTER_LINEAR);
-undistorted_rectifiedR = cv2.remap(grayR, mapR1, mapR2, cv2.INTER_LINEAR);
+undistorted_rectifiedL = cv2.remap(grayL, mapL1, mapL2, cv2.INTER_LANCZOS4);
+undistorted_rectifiedR = cv2.remap(grayR, mapR1, mapR2, cv2.INTER_LANCZOS4);
 
 
 #for line in range(0, int(undistorted_rectifiedR.shape[0] / 20)):

@@ -3,11 +3,11 @@ import cv2
 import time 
 
 time.sleep(2)
-cap = cv2.VideoCapture('http://192.168.0.100:9090/stream/video.mpeg')
+cap = cv2.VideoCapture('http://pi:raspberrypi@192.168.0.100:9090/stream/video.mjpeg')
 
-fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+#fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
-out = cv2.VideoWriter('http://192.168.0.100:9090/stream/video.mpeg',fourcc, 20.0, (640,480))
+#out = cv2.VideoWriter('http://192.168.0.100:9090/stream/video.mpeg',fourcc, 20.0, (640,480))
 
 
 #cap=cv2.VideoCapture('http://192.168.0.100:9090/stream/video.mpeg')
