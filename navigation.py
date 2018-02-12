@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+import socket
 import numpy as np
 import cv2
 import glob
@@ -16,12 +19,8 @@ objp[:,:2] = np.mgrid[0:9,0:6].T.reshape(-1,2)
 objpoints = [] # 3d point in real world space
 imgpoints_left = [] # 2d points in left image plane.
 imgpoints_right = [] # 2d points in right image plane
-#images = glob.glob('/home/pi/calibration/right/*.jpg')
 
 for i in range(1,22):
-#for fname in images:
-   # img_left = cv2.imread("/home/roshnee/Thesis/rpi code/left/left%02d.jpg"%i)
-   # img_right= cv2.imread("/home/roshnee/Thesis/rpi code/right/right%02d.jpg"%i)
     img_left = cv2.imread("/home/roshnee/myrepo/StereoCalibration/left/left%02d.jpg"%i)
     img_right= cv2.imread("/home/roshnee/myrepo/StereoCalibration/right/right%02d.jpg"%i)
 
@@ -54,9 +53,6 @@ ret, mtx_right, dist_right, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoi
 
 stereocalib_criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 100, 1e-5)
 stereocalib_flags = cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_SAME_FOCAL_LENGTH | cv2.CALIB_RATIONAL_MODEL | cv2.CALIB_FIX_K3 | cv2.CALIB_FIX_K4 | cv2.CALIB_FIX_K5 | cv2.CALIB_FIX_K6 | cv2.CALIB_FIX_INTRINSIC
-#retval, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, R, T, E, F = cv2.stereoCalibrate(objpoints,imgpoints_left,imgpoints_right,image_size)
-#retval, _, _, _, _, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, (640,720), cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, flags=cv2.cv.CV_CALIB_FIX_INTRINSIC)
-#stereocalib_retval, cameraMatrix1, distCoeff1, cameraMatrix2, distCoeff2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right,mtx_left,distCoeff1,mtx_right,distCoeff2,gray_right.shape[::-1],criteria=stereocalib_criteria,flags=stereocalib_flags)
 print("Dist_left:",dist_left)
 print("Dist_right:",dist_right)
 termination_criteria_extrinsics = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
@@ -74,20 +70,12 @@ print("Translation:",T)
 print("Essential Matrix:",E)
 print("Fundamental Matrix:",F)
 print("Distortion Coefficients:",distCoeffs1,distCoeffs2)
-#x=np.matrix(T)
-#y=x.tolist()
-#z=np.array(y)
-#y=z.flatten()
-#print("Translation array:",y)
 Baseline=2.4*np.linalg.norm(T)
-#Tarray= np.ravel(T.sum(axis=0))
-#print("TArray",Tarray)
-#Baseline=math.sqrt(Tarray**2)*2.4
 print("baseline in cm",Baseline)
 rectify_scale = 0 # 0=full crop, 1=no crop, -1=default without scaling
 
 #Rectify to get the distortion coefficients and the Q matrix needed for reprojection
-R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (1280, 640), R, T,
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 640), R, T,
                                   flags=cv2.CALIB_ZERO_DISPARITY, alpha = 0)
 
 print('R1:',R1)
@@ -96,36 +84,41 @@ print('P1:',P1)
 print('P2',P2)
 print('Q matrix:',Q)
 
-mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (1280, 640), cv2.CV_32FC1)
-mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (1280, 640), cv2.CV_32FC1)
+mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (640, 640), cv2.CV_32FC1)
+mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (640, 640), cv2.CV_32FC1)
+
+#connect to rpi
+HOST ="192.168.0.100" # Enter IP or Hostname of your server
+PORT = 9900 # Pick an open Port (1000+ recommended), must match the server port
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST,PORT))
+
 
 #Input from the video stream
+nof=0
 time.sleep(2)
 cap = cv2.VideoCapture('http://pi:raspberrypi@192.168.0.100:9090/stream/video.mjpeg')
-
 print("Cap is opened")
 while(cap.isOpened()):
 
     ret,frame=cap.read()
     if ret==True:
        cv2.imshow('video stream',frame)
-       right=frame[0:640,0:1280]
-       left=frame[640:1280,0:1280]
+       right=frame[0:640,0:640]
+       left=frame[0:640,640:1280]
        left_img_remap = cv2.remap(left, mapL1, mapL2, cv2.INTER_LINEAR)
        right_img_remap = cv2.remap(right, mapR1, mapR2, cv2.INTER_LINEAR)
        cv2.imshow('rectified left',left_img_remap)
        cv2.imshow('rectified right',right_img_remap)
-       
+     
        #Convert to grayscale
        imgL=cv2.cvtColor(left_img_remap,cv2.COLOR_BGR2GRAY)
        imgR=cv2.cvtColor(right_img_remap,cv2.COLOR_BGR2GRAY)
-
        #find the depth map
        # SGBM Parameters -----------------
        window_size = 3                     # wsize default 3; 5; 7 for SGBM reduced size image; 15 for SGBM full size image (1300px and above); 5 Works nicely
- 
        left_matcher = cv2.StereoSGBM_create(
-    		minDisparity=0,
+    	  	minDisparity=0,
     		numDisparities=160,             # max_disp has to be dividable by 16 f. E. HH 192, 256
     		blockSize=5,
     		P1=8 * 3 * window_size ** 2,    # wsize default 3; 5; 7 for SGBM reduced size image; 15 for SGBM full size image (1300px and above); 5 Works nicely
@@ -137,14 +130,13 @@ while(cap.isOpened()):
     		preFilterCap=63,
     		mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY
        )
- 
+
        right_matcher = cv2.ximgproc.createRightMatcher(left_matcher)
  
        # FILTER Parameters
        lmbda = 80000
        sigma = 1.2
        visual_multiplier = 1.0
- 
        wls_filter = cv2.ximgproc.createDisparityWLSFilter(matcher_left=left_matcher)
        wls_filter.setLambda(lmbda)
        wls_filter.setSigmaColor(sigma)
@@ -158,19 +150,49 @@ while(cap.isOpened()):
  
        filteredImg = cv2.normalize(src=filteredImg, dst=filteredImg, beta=0, alpha=255, norm_type=cv2.NORM_MINMAX);
        filteredImg = np.uint8(filteredImg)
-       filteredImg=filteredImg[0:640,180:1280]
+       filteredImg=filteredImg[0:640,100:640]
+       nop=345600
+       temp=0
+       tri_const=650*0.065
+       #Z=tri_const/filteredImg[320,320]
+       #print("Z=",Z,"for the disparity value",filteredImg[320,320])
+       for i in range(0,640):
+         for j in range(0,540):
+            temp=temp+filteredImg[i,j]
+       avg=temp/nop
+       Z_avg=tri_const/avg
+       print("average",avg)
+       print("Average depth",Z_avg)
        cv2.imshow('Disparity Map', filteredImg)
-       
+       nof=nof+1
+      # if(nof%20 == 0):
 
+        # if(Z_avg>0.3):
+        #      s.send("forward".encode())
+        #      reply = s.recv(1024)
+        #      print(reply)
+        # elif(Z_avg<0.3):
+        #     s.send("right".encode())
+        #     reply = s.recv(1024)
+        #     print(reply)
+        # else:
+        #    s.send("quit".encode())
+        #    reply = s.recv(1024)
+        #    print(reply)
+       #else:
+       #  continue
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+         #s.send("quit".encode())
+         #reply = s.recv(1024)
+         #print(reply)
+         break
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 
-
+ 
 
 
 

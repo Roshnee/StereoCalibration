@@ -69,9 +69,10 @@ print("Fundamental Matrix:",F)
 print("Distortion Coefficients:",distCoeffs1,distCoeffs2)
 
 rectify_scale = 0 # 0=full crop, 1=no crop
-R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T, alpha = 0)
-mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (640, 720), cv2.CV_32FC1)
-mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (640, 720), cv2.CV_32FC1)
+#(width,height)
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (1280, 640), R, T, alpha = 0)
+mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (1280, 640), cv2.CV_32FC1)
+mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (1280, 640), cv2.CV_32FC1)
 
 #lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
 #rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
@@ -86,8 +87,9 @@ while(cap.isOpened()):
     ret,frame=cap.read()
     if ret==True:
        cv2.imshow('video stream',frame)
-       right=frame[0:640,0:640]
-       left=frame[0:640,640:1280]
+       #[row,column]
+       right=frame[0:640,0:1280]
+       left=frame[640:1280,0:1280]
        left_img_remap = cv2.remap(left, mapL1, mapL2, cv2.INTER_LINEAR)
        right_img_remap = cv2.remap(right, mapR1, mapR2, cv2.INTER_LINEAR)
        cv2.imshow('rectified left',left_img_remap)

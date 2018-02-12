@@ -69,88 +69,86 @@ print("Fundamental Matrix:",F)
 print("Distortion Coefficients:",distCoeffs1,distCoeffs2)
 
 rectify_scale = 0 # 0=full crop, 1=no crop
-R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (1280, 640), R, T, alpha = 0)
-mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (1280, 640), cv2.CV_32FC1)
-mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (1280, 640), cv2.CV_32FC1)
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, (640, 720), R, T, alpha = 0)
+mapL1, mapL2 = cv2.initUndistortRectifyMap(cameraMatrix1, distCoeffs1, R1, P1, (640, 720), cv2.CV_32FC1)
+mapR1, mapR2 = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, (640, 720), cv2.CV_32FC1)
 print("K1:",R1)
 print("K2:",R2)
 print("P1",P1)
 print("P2",P2)
 print("Q:",Q)
 
-#lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
-#rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
+lFrame = cv2.imread('/home/roshnee/Thesis/rpi code/left/left01.jpg')
+rFrame = cv2.imread('/home/roshnee/Thesis/rpi code/right/right01.jpg')
 
 #Input from the video stream
-time.sleep(2)
-cap = cv2.VideoCapture('http://pi:raspberrypi@192.168.0.100:9090/stream/video.mjpeg')
+#time.sleep(2)
+#cap = cv2.VideoCapture('http://pi:raspberrypi@192.168.0.100:9090/stream/video.mjpeg')
 
-print("Cap is opened")
-while(cap.isOpened()):
+#print("Cap is opened")
+#while(cap.isOpened()):
 
-    ret,frame=cap.read()
-    if ret==True:
-       cv2.imshow('video stream',frame)
-       right=frame[0:1280,0:640]
-       left=frame[0:1280,640:1280]
-       left_img_remap = cv2.remap(left, mapL1, mapL2, cv2.INTER_LINEAR)
-       right_img_remap = cv2.remap(right, mapR1, mapR2, cv2.INTER_LINEAR)
-       cv2.imshow('rectified left',left_img_remap)
-       cv2.imshow('rectified right',right_img_remap)
+#    ret,frame=cap.read()
+#    if ret==True:
+#       cv2.imshow('video stream',frame)
+#       right=frame[0:720,0:640]
+#       left=frame[0:720,640:1280]
+left_img_remap = cv2.remap(lFrame, mapL1, mapL2, cv2.INTER_LINEAR)
+right_img_remap = cv2.remap(rFrame, mapR1, mapR2, cv2.INTER_LINEAR)
+cv2.imshow('rectified left',left_img_remap)
+cv2.imshow('rectified right',right_img_remap)
        
        #Convert to grayscale
-       imgL=cv2.cvtColor(left_img_remap,cv2.COLOR_BGR2GRAY)
-       imgR=cv2.cvtColor(right_img_remap,cv2.COLOR_BGR2GRAY)
+imgL=cv2.cvtColor(left_img_remap,cv2.COLOR_BGR2GRAY)
+imgR=cv2.cvtColor(right_img_remap,cv2.COLOR_BGR2GRAY)
 
        #find the depth map
        # SGBM Parameters -----------------
-       window_size = 15                   # wsize default 3; 5; 7 for SGBM reduced size image; 15 for SGBM full size image (1300px and above); 5 Works nicely
+window_size = 3                     # wsize default 3; 5; 7 for SGBM reduced size image; 15 for SGBM full size image (1300px and above); 5 Works nicely
  
-       left_matcher = cv2.StereoSGBM_create(
-    		minDisparity=16,
-    		numDisparities=160-16,             # max_disp has to be dividable by 16 f. E. HH 192, 256
+left_matcher = cv2.StereoSGBM_create(
+    		minDisparity=0,
+    		numDisparities=160,             # max_disp has to be dividable by 16 f. E. HH 192, 256
     		blockSize=5,
     		P1=8 * 3 * window_size ** 2,    # wsize default 3; 5; 7 for SGBM reduced size image; 15 for SGBM full size image (1300px and above); 5 Works nicely
     		P2=32 * 3 * window_size ** 2,
     		disp12MaxDiff=1,
     		uniquenessRatio=15,
-    		speckleWindowSize=100,
+    		speckleWindowSize=0,
     		speckleRange=2,
-    		preFilterCap=63
+    		preFilterCap=63,
+    		mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY
        )
  
-       right_matcher = cv2.ximgproc.createRightMatcher(left_matcher)
+right_matcher = cv2.ximgproc.createRightMatcher(left_matcher)
  
        # FILTER Parameters
-       lmbda = 80000
-       sigma = 1.2
-       visual_multiplier = 1.0
+lmbda = 80000
+sigma = 1.2
+visual_multiplier = 1.0
  
-       wls_filter = cv2.ximgproc.createDisparityWLSFilter(matcher_left=left_matcher)
-       wls_filter.setLambda(lmbda)
-       wls_filter.setSigmaColor(sigma)
+wls_filter = cv2.ximgproc.createDisparityWLSFilter(matcher_left=left_matcher)
+wls_filter.setLambda(lmbda)
+wls_filter.setSigmaColor(sigma)
  
-       print('computing disparity...')
-       displ = left_matcher.compute(imgL, imgR)  # .astype(np.float32)/16
-       dispr = right_matcher.compute(imgR, imgL)  # .astype(np.float32)/16
-       displ = np.int16(displ)
-       dispr = np.int16(dispr)
-       filteredImg = wls_filter.filter(displ, imgL, None, dispr)  # important to put "imgL" here!!!
- 
-       filteredImg = cv2.normalize(src=filteredImg, dst=filteredImg, beta=0, alpha=255, norm_type=cv2.NORM_MINMAX);
-       filteredImg = np.uint8(filteredImg)
-       #Img=filteredImg[280:720,100:640]
-       print("Pixel value:",filteredImg[380,320])
-       cv2.imshow('Disparity Map', filteredImg)
-       
+print('computing disparity...')
+displ = left_matcher.compute(imgL, imgR)  # .astype(np.float32)/16
+dispr = right_matcher.compute(imgR, imgL)  # .astype(np.float32)/16
+displ = np.int16(displ)
+dispr = np.int16(dispr)
+filteredImg = wls_filter.filter(displ, imgL, None, dispr)  # important to put "imgL" here!!!
+filteredImg = cv2.normalize(src=filteredImg, dst=filteredImg, beta=0, alpha=255, norm_type=cv2.NORM_MINMAX);
+filteredImg = np.uint8(filteredImg)
+#Img=filteredImg[280:720,100:640]
+print("Pixel value:",filteredImg[380,320])
+cv2.imshow('Disparity Map', filteredImg)
+cv2.imwrite('disparity.jpg',filteredImg)
+print(filteredImg.shape)       
+points=cv2.reprojectImageTo3D(filteredImg,Q)
+print(points)
 
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-
-
-cap.release()
+#cap.release()
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
