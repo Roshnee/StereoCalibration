@@ -97,23 +97,23 @@ s.connect((HOST,PORT))
 #def display(Img):
 #  cv2.imshow("disparity",Img)
 
-def communicate(nof,Z_avg):
-  if(nof%10 == 0):
+def communicate(nof,Z_avg,Z_lb,Z_lm,Z_rm,Z_rb):
+  if(nof%5 == 0):
 
-         if(Z_avg>0.3):
+         if(Z_rb<0.3 or Z_rm<0.3):
               print("average",avg)
               print("Average depth",Z_avg)
-              s.send("forward".encode())
+              s.send("left".encode())
               reply = s.recv(1024)
               print(reply)
-         elif(Z_avg<0.3):
+         elif(Z_avg<0.3 or Z_lb<0.3 or Z_lm<0.3):
              print("average",avg)
              print("Average depth",Z_avg)
              s.send("right".encode())
              reply = s.recv(1024)
              print(reply)
          else:
-             s.send("quit".encode())
+             s.send("forward".encode())
              reply = s.recv(1024)
              print(reply)
 
@@ -173,15 +173,40 @@ while(cap.isOpened()):
  
        filteredImg = cv2.normalize(src=filteredImg, dst=filteredImg, beta=0, alpha=255, norm_type=cv2.NORM_MINMAX);
        filteredImg = np.uint8(filteredImg)
-       filteredImg=filteredImg[0:640,100:640]
+       filteredImg=filteredImg[0:640,200:640]
+       lm=filteredImg[250:500,220:440]
+       lb=filteredImg[0:250,220:440]
+       rm=filteredImg[250:500,0:220]
+       rb=filteredImg[0:250,0:220]
+       lma=np.array(lm)
+       lba=np.array(lb)
+       rma=np.array(rm)
+       rba=np.array(rb)
+       lba_sum=np.sum(lba)
+       lma_sum=np.sum(lma)
+       rba_sum=np.sum(rba)
+       rma_sum=np.sum(rma)
+       nop_crop=50000
+       lb_avg=lba_sum/nop_crop
+       lm_avg=lma_sum/nop_crop
+       rb_avg=rba_sum/nop_crop
+       rm_avg=rma_sum/nop_crop
+     
+       
        #display(filteredImg)
        nop=345600
        temp=0
        tri_const=650*0.065
+       
+       Z_rb=tri_const/lb_avg
+       Z_rm=tri_const/lm_avg
+       Z_lb=tri_const/rb_avg
+       Z_lm=tri_const/rm_avg
+
        #Z=tri_const/filteredImg[320,320]
        #print("Z=",Z,"for the disparity value",filteredImg[320,320])
        for i in range(0,640):
-         for j in range(0,540):
+         for j in range(0,440):
             temp=temp+filteredImg[i,j]
        avg=temp/nop
        Z_avg=tri_const/avg
@@ -190,7 +215,7 @@ while(cap.isOpened()):
        #cv2.imshow('Disparity Map', filteredImg)
        nof=nof+1
        cv2.imshow("disparity",filteredImg)
-       p2=Thread(target=communicate, args=(nof,Z_avg))
+       p2=Thread(target=communicate, args=(nof,Z_avg,Z_lb,Z_lm,Z_rm,Z_rb))
        p2.start()
        p2.join()
     if cv2.waitKey(1) & 0xFF == ord('q'):
