@@ -21,8 +21,8 @@ imgpoints_left = [] # 2d points in left image plane.
 imgpoints_right = [] # 2d points in right image plane
 
 for i in range(1,22):
-    img_left = cv2.imread("/home/roshnee/myrepo/StereoCalibration/left/left%02d.jpg"%i)
-    img_right= cv2.imread("/home/roshnee/myrepo/StereoCalibration/right/right%02d.jpg"%i)
+    img_left = cv2.imread("/home/roshnee/github/StereoCalibration/left/left%02d.jpg"%i)
+    img_right= cv2.imread("/home/roshnee/github/StereoCalibration/right/right%02d.jpg"%i)
 
     gray_left = cv2.cvtColor(img_left,cv2.COLOR_BGR2GRAY)
     gray_right = cv2.cvtColor(img_right,cv2.COLOR_BGR2GRAY)

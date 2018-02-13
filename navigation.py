@@ -21,8 +21,8 @@ imgpoints_left = [] # 2d points in left image plane.
 imgpoints_right = [] # 2d points in right image plane
 
 for i in range(1,22):
-    img_left = cv2.imread("/home/roshnee/myrepo/StereoCalibration/left/left%02d.jpg"%i)
-    img_right= cv2.imread("/home/roshnee/myrepo/StereoCalibration/right/right%02d.jpg"%i)
+    img_left = cv2.imread("/home/roshnee/github/StereoCalibration/left/left%02d.jpg"%i)
+    img_right= cv2.imread("/home/roshnee/github/StereoCalibration/right/right%02d.jpg"%i)
 
     gray_left = cv2.cvtColor(img_left,cv2.COLOR_BGR2GRAY)
     gray_right = cv2.cvtColor(img_right,cv2.COLOR_BGR2GRAY)
@@ -161,31 +161,36 @@ while(cap.isOpened()):
             temp=temp+filteredImg[i,j]
        avg=temp/nop
        Z_avg=tri_const/avg
-       print("average",avg)
-       print("Average depth",Z_avg)
-       cv2.imshow('Disparity Map', filteredImg)
+       #print("average",avg)
+       #print("Average depth",Z_avg)
+       #cv2.imshow('Disparity Map', filteredImg)
        nof=nof+1
-      # if(nof%20 == 0):
+       if(nof%10 == 0):
 
-        # if(Z_avg>0.3):
-        #      s.send("forward".encode())
-        #      reply = s.recv(1024)
-        #      print(reply)
-        # elif(Z_avg<0.3):
-        #     s.send("right".encode())
-        #     reply = s.recv(1024)
-        #     print(reply)
-        # else:
-        #    s.send("quit".encode())
-        #    reply = s.recv(1024)
-        #    print(reply)
-       #else:
-       #  continue
+         if(Z_avg>0.3):
+              print("average",avg)
+              print("Average depth",Z_avg)
+              s.send("forward".encode())
+              reply = s.recv(1024)
+              print(reply)
+         elif(Z_avg<0.3):
+             print("average",avg)
+             print("Average depth",Z_avg)
+             s.send("right".encode())
+             reply = s.recv(1024)
+             print(reply)
+         else:
+            
+            s.send("quit".encode())
+            reply = s.recv(1024)
+            print(reply)
+       else:
+         continue
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
-         #s.send("quit".encode())
-         #reply = s.recv(1024)
-         #print(reply)
+         s.send("quit".encode())
+         reply = s.recv(1024)
+         print(reply)
          break
 
 cv2.waitKey(0)
